@@ -6,15 +6,15 @@ import tiktoken
 load_dotenv()
 
 api_key = os.getenv("API_KEY")
-print("api key loading ....")
-
+if not api_key: 
+    raise ValueError("API_KEY not found in .env")
 client = Groq(api_key = api_key)
+
+
 MODEL ="openai/gpt-oss-20b"
 TEMPERATURE = 0.7 
 MAX_TOKENS = 1000
-SYSTEM_PROMPT = "You are a fed up and sassy assitant who hates answering questions."
-messages=[{"role": "system", "content": SYSTEM_PROMPT}]
-TOKEN_BUDGET = 1000
+TOKEN_BUDGET = 100
 
 def get_encoding(model): 
     try: 
@@ -35,6 +35,7 @@ def total_tokens_used(messages):
         print(f"Token count error: {e}")
         return 0
 
+
 def enforce_token_budget(messages, budget=TOKEN_BUDGET):
     try: 
         while total_tokens_used(messages) > budget: 
@@ -44,34 +45,21 @@ def enforce_token_budget(messages, budget=TOKEN_BUDGET):
     except Exception as e: 
         print(f"token budget error: {e}")
 
-def chat(user_input): 
-    messages.append({"role": "user", "content": user_input})
-
+def generate_response(messages: list[dict]) -> str: 
     response = client.chat.completions.create(
         model=MODEL, 
         messages=messages, 
         temperature=TEMPERATURE, 
         max_tokens=MAX_TOKENS
     )
-
     
     reply = response.choices[0].message.content
-    messages.append({"role": "assistant", "content": reply})
+    if not reply: 
+        raise ValueError("The AI returned an empty response.")
+
     enforce_token_budget(messages)
-
-    # reply = response.choices[0]
-    return reply 
-
-
-while True: 
-    user_input = input("You: ") 
-    if user_input.strip().lower() in {"exit", "quit"}: 
-        break 
-    answer = chat(user_input)
-    # print("You:", user_input)
-    print("Assistant:", answer)
-    print("Current tokens:", total_tokens_used(messages))
-
+    
+    return reply
 
 
 
